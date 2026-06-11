@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Parkinson Klinik Rehabilitasyon Platformu</title>
+    <title>Parkinson Klinik Rehabilitasyon Platformu - Daire Düzeltme</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
       #start-screen {
@@ -46,12 +46,12 @@
       <h2>Parkinson Egzersiz Ayarları</h2>
       
       <div class="menu-group">
-        <label for="bpm-select">Egzersiz Hızı (Metronom Tempo):</label>
+        <label for="bpm-select">Egzersiz Hızı (Tempo):</label>
         <select id="bpm-select">
-          <option value="30">30 BPM (Çok Yavaş / Ağır Rijidite)</option>
-          <option value="40" selected>40 BPM (Standart / İdeal Evre)</option>
+          <option value="30">30 BPM (Çok Yavaş)</option>
+          <option value="40" selected>40 BPM (Standart)</option>
           <option value="50">50 BPM (Orta Hızlı)</option>
-          <option value="60">60 BPM (Hızlı / Koordinasyon Testi)</option>
+          <option value="60">60 BPM (Hızlı)</option>
         </select>
       </div>
 
@@ -60,7 +60,7 @@
         <select id="size-select">
           <option value="0.55">Büyük (Kolay Odaklanma)</option>
           <option value="0.40" selected>Orta (Klinik Standart)</option>
-          <option value="0.28">Küçük (Zor / İnce Tremor Kontrolü)</option>
+          <option value="0.28">Küçük (Zor Kontrol)</option>
         </select>
       </div>
 
@@ -71,21 +71,21 @@
       <a-sky color="#ECEFF1"></a-sky>
       <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100" color="#CFD8DC"></a-plane>
 
-      <a-cylinder id="drum-0" class="drum targetable" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-0" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
-      </a-cylinder>
+      <a-circle id="drum-0" class="drum targetable" rotation="0 0 0" color="#FBC02D">
+        <a-circle id="mask-0" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
+      </a-circle>
 
-      <a-cylinder id="drum-1" class="drum targetable" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-1" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
-      </a-cylinder>
+      <a-circle id="drum-1" class="drum targetable" rotation="0 0 0" color="#FBC02D">
+        <a-circle id="mask-1" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
+      </a-circle>
 
-      <a-cylinder id="drum-2" class="drum targetable" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-2" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
-      </a-cylinder>
+      <a-circle id="drum-2" class="drum targetable" rotation="0 0 0" color="#FBC02D">
+        <a-circle id="mask-2" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
+      </a-circle>
 
-      <a-cylinder id="drum-3" class="drum targetable" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-3" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
-      </a-cylinder>
+      <a-circle id="drum-3" class="drum targetable" rotation="0 0 0" color="#FBC02D">
+        <a-circle id="mask-3" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
+      </a-circle>
 
       <a-box id="dynamic-line" class="targetable" width="0.15" height="1" depth="0.01" material="color: #2196F3; opacity: 0; transparent: true" position="0 0 -100"></a-box>
 
@@ -106,7 +106,7 @@
       let timeLeft = 60;
       let gameInterval, beatInterval, scoreInterval;
       let audioCtx = null;
-      let wakeLock = null; // Ekranın kapanmasını engelleyecek kilit objesi
+      let wakeLock = null; 
       
       const drums = [document.getElementById('drum-0'), document.getElementById('drum-1'), document.getElementById('drum-2'), document.getElementById('drum-3')];
       const masks = [document.getElementById('mask-0'), document.getElementById('mask-1'), document.getElementById('mask-2'), document.getElementById('mask-3')];
@@ -118,30 +118,30 @@
       let currentTargetObject = null;
       let isTransitioning = false;
 
-      // Menüden Dinamik Gelecek Parametreler
+      // Dinamik Gelecek Parametreler
       let BEAT_DURATION = 1500; 
       let DRUM_RADIUS = 0.40;
-      let MIN_DIST = 1.6; // Güvenli mesafe sınırı (çapın en az 4 katı yarıçap)
+      let MIN_DIST = 1.6; 
 
       const MIN_X = -2.4, MAX_X = 2.4;
       const MIN_Y = 0.6, MAX_Y = 2.4;
-      const FIXED_Z = -4;
+      const FIXED_Z = -4; // Davullar havada asılı kalıp kameraya bakacak
 
       startBtn.addEventListener('click', async () => {
-        // Menü Değerlerini Al ve Uygula
+        // Menü Değerlerini Al
         let selectedBPM = parseInt(document.getElementById('bpm-select').value);
         BEAT_DURATION = (60 / selectedBPM) * 1000;
 
         DRUM_RADIUS = parseFloat(document.getElementById('size-select').value);
-        MIN_DIST = DRUM_RADIUS * 4; // 2 Çap mesafe kuralı ($4 \times r$)
+        MIN_DIST = DRUM_RADIUS * 4; 
 
-        // Davul Boyutlarını Güncelle
+        // Davul (Daire) Boyutlarını Güncelle
         drums.forEach((drum, idx) => {
           drum.setAttribute('radius', DRUM_RADIUS);
-          masks[idx].setAttribute('radius', DRUM_RADIUS - 0.01);
+          masks[idx].setAttribute('radius', DRUM_RADIUS); // Maske de aynı boyutta
         });
 
-        // 1. Ekran Kapanmasını Engelleme Aktivasyonu (Wake Lock)
+        // 1. Ekran Kapanmasını Engelleme (Wake Lock API)
         try {
           if ('wakeLock' in navigator) {
             wakeLock = await navigator.wakeLock.request('screen');
@@ -167,7 +167,7 @@
         uiOverlay.style.display = 'block';
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // İlk davul merkezde tam yeşil başlar
+        // İlk davul merkezde tam yeşil başlar (scale 1 1 1 kilitlendi)
         drums[activeIndex].setAttribute('position', {x: 0, y: 1.5, z: FIXED_Z});
         masks[activeIndex].setAttribute('scale', '1 1 1');
 
@@ -181,7 +181,7 @@
         setupScoreDetection();
       }
 
-      // ÜST ÜSTE BİNMEYİ ENGELLEYEN AKILLI KONUMLANDIRMA FONKSİYONU
+      // ÜST ÜSTE BİNMEYİ ENGELLEYEN AKILLI KONUMLANDIRMA
       function randomizeDrumWithoutOverlap(targetDrum, targetIdx) {
         let attempts = 0;
         let validPosition = false;
@@ -193,21 +193,18 @@
           newY = Math.random() * (MAX_Y - MIN_Y) + MIN_Y;
           validPosition = true;
 
-          // Diğer yerleşmiş tüm davullarla mesafesini ölç
           for (let i = 0; i < drums.length; i++) {
-            if (i === targetIdx) continue; // Kendini kontrol etme
+            if (i === targetIdx) continue;
             
             let otherPos = drums[i].getAttribute('position');
-            // Eğer o davul henüz konumlandırılmadıysa (varsayılan 0 0 0 ise ve oyun başıysa) atla
             if (!otherPos || (otherPos.x === 0 && otherPos.y === 0)) continue;
 
             let dx = newX - otherPos.x;
             let dy = newY - otherPos.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
 
-            // İstediğin kısıt: Mesafe en az 2 çap (MIN_DIST) kadar olmalı
             if (dist < MIN_DIST) {
-              validPosition = false; // Çok yakın, bu koordinatı iptal et yeniden dene
+              validPosition = false;
               break;
             }
           }
@@ -232,7 +229,6 @@
       function updateTimer() {
         timeLeft--;
         uiTimer.textContent = timeLeft;
-        if (timeLeft <= 30) uiMode.textContent = "Rastgele";
         if (timeLeft <= 0) endGame();
       }
 
@@ -243,7 +239,8 @@
         if (currentCycleBeat === 1) {
           isTransitioning = false;
           playMetronomeSound(150);
-          masks.forEach((m, idx) => m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 0'));
+          // Kesin eşitleme: Aktif tam yeşil (scale 1), diğerleri sıfır
+          masks.forEach((m, idx) => m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 1'));
           
           // Sarı davulları üst üste binmeyecek şekilde ışınla
           drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
@@ -303,6 +300,7 @@
         dynamicLine.setAttribute('material', 'opacity', '0.9');
       }
 
+      // Düz daire maskesinin tam büyümesini garanti eden geçiş animasyonu (scale X ve Y eksenlerinde değişir)
       function animateTransition(oldIdx, newIdx, duration) {
         let startTime = performance.now();
 
@@ -310,16 +308,19 @@
           let progress = (now - startTime) / duration;
           if (progress > 1) progress = 1;
 
+          // Eski yeşil daire küçülüyor (X ve Y'den)
           let oldScale = 1 - progress;
-          masks[oldIdx].setAttribute('scale', `${oldScale} 1 ${oldScale}`);
+          masks[oldIdx].setAttribute('scale', `${oldScale} ${oldScale} 1`);
 
+          // Yeni yeşil daire büyüyor (X ve Y'den tam yeşil sarıyı kaplama)
           let newScale = progress;
-          masks[newIdx].setAttribute('scale', `${newScale} 1 ${newScale}`);
+          masks[newIdx].setAttribute('scale', `${newScale} ${newScale} 1`);
 
           if (progress < 1 && isTransitioning) {
             requestAnimationFrame(step);
           } else {
-            masks[oldIdx].setAttribute('scale', '0 0 0');
+            // Tam bitiş noktası eşitleme (Kritik: Z daima 1 kalır)
+            masks[oldIdx].setAttribute('scale', '0 0 1');
             masks[newIdx].setAttribute('scale', '1 1 1');
           }
         }
@@ -352,12 +353,12 @@
         clearInterval(beatInterval);
         clearInterval(scoreInterval);
         
-        // Ekran kilidini güvenle serbest bırak
+        // Ekran kilidini serbest bırak
         if (wakeLock !== null) {
           wakeLock.release().then(() => { wakeLock = null; });
         }
 
-        masks.forEach(m => m.setAttribute('scale', '0 0 0'));
+        masks.forEach(m => m.setAttribute('scale', '0 0 1'));
         dynamicLine.setAttribute('material', 'opacity', '0');
         alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}`);
       }
