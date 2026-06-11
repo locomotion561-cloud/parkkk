@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Parkinson Ritim ve Odak Egzersizi</title>
+    <title>Parkinson Ritim, Odak ve Çizgi Takip Egzersizi</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
       #start-screen {
@@ -33,9 +33,9 @@
     </div>
 
     <div id="start-screen">
-      <h2>Parkinson Ritim Egzersizi</h2>
+      <h2>Parkinson Ritim & Çizgi Egzersizi</h2>
       <p style="max-width: 400px; padding: 0 20px;">
-        Telefonu yatay tutun. Başınızı hareket ettirerek ortadaki kırmızı imleci yeşile dönen davulların içinde tutmaya çalışın!
+        Ritime kulak verin! İmleci yeşil davulda tutun ve yeni davula geçerken **bağlantı çizgilerini takip ederek** ekstra puan kazanın!
       </p>
       <button id="start-btn">EGZERSİZİ BAŞLAT</button>
     </div>
@@ -44,15 +44,23 @@
       <a-sky color="#ECEFF1"></a-sky>
       <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100" color="#CFD8DC"></a-plane>
 
-      <a-cylinder id="drum-0" class="drum" position="-2.2 2.2 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
-      <a-cylinder id="drum-1" class="drum" position="2.2 2.2 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
-      <a-cylinder id="drum-2" class="drum" position="2.2 0.8 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
-      <a-cylinder id="drum-3" class="drum" position="-2.2 0.8 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-0" class="drum targetable" position="-2.2 2.2 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-1" class="drum targetable" position="2.2 2.2 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-2" class="drum targetable" position="2.2 0.8 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-3" class="drum targetable" position="-2.2 0.8 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+
+      <a-entity id="line-0-1" class="line targetable" line="start: -2.2 2.2 -3.9; end: 2.2 2.2 -3.9; color: #78909C"></a-entity>
+      <a-entity id="line-1-2" class="line targetable" line="start: 2.2 2.2 -3.9; end: 2.2 0.8 -3.9; color: #78909C"></a-entity>
+      <a-entity id="line-2-3" class="line targetable" line="start: 2.2 0.8 -3.9; end: -2.2 0.8 -3.9; color: #78909C"></a-entity>
+      <a-entity id="line-3-0" class="line targetable" line="start: -2.2 0.8 -3.9; end: -2.2 2.2 -3.9; color: #78909C"></a-entity>
+      
+      <a-entity id="line-0-2" class="line targetable" line="start: -2.2 2.2 -3.9; end: 2.2 0.8 -3.9; color: #78909C"></a-entity>
+      <a-entity id="line-1-3" class="line targetable" line="start: 2.2 2.2 -3.9; end: -2.2 0.8 -3.9; color: #78909C"></a-entity>
 
       <a-entity camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" position="0 1.5 0">
         <a-cursor 
           id="my-cursor"
-          raycaster="objects: .drum; interval: 50" 
+          raycaster="objects: .targetable; interval: 30" 
           fuse="false"
           color="#D50000"
           scale="2 2 2">
@@ -71,6 +79,7 @@
       let score = 0;
       let timeLeft = 60;
       let gameInterval, beatInterval, scoreInterval;
+      let audioCtx = null;
       
       const drums = [
         document.getElementById('drum-0'),
@@ -82,10 +91,10 @@
       let activeDrum = null;
       let currentDrumIndex = 0;
       let beatCount = 0;
+      let currentTargetObject = null; // Şu an imlecin üstünde olduğu nesne
 
-      // Sabit Renkler
-      const COLOR_IDLE = "#FBC02D";   // Sarı
-      const COLOR_ACTIVE = "#388E3C"; // Klinik Yeşil
+      const COLOR_IDLE = "#FBC02D";
+      const COLOR_ACTIVE = "#388E3C";
 
       startBtn.addEventListener('click', () => {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -102,15 +111,33 @@
         startScreen.style.display = 'none';
         uiOverlay.style.display = 'block';
         
-        // 1. Ana Geri Sayım Zamanlayıcısı (1 saniyede bir)
+        // Web Audio API Başlatma (Kullanıcı etkileşimi sonrası)
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
         gameInterval = setInterval(updateTimer, 1000);
-
-        // 2. Ritim Zamanlayıcısı (60 BPM = Saniyede 1 vuruş)
-        // Her vuruşta beat dikişlerini ve 3 vuruş kuralını kontrol eder
-        beatInterval = setInterval(handleBeat, 1000);
-
-        // 3. Puanlama Kontrolü (İmleç davulun içindeyse sürekli puan akar)
+        beatInterval = setInterval(handleBeat, 1000); // 60 BPM = 1 Saniyede 1 vuruş
         setupScoreDetection();
+      }
+
+      // Web Audio API ile Metronom Sesi Üretme (Tok bir davul vuruşu)
+      function playMetronomeSound(isNewDrumBeat) {
+        if (!audioCtx) return;
+        
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        // Yeni davula geçiş vuruşu daha tiz (farklı), ara ritim vuruşları daha pes ses çıkarır
+        osc.frequency.setValueAtTime(isNewDrumBeat ? 220 : 150, audioCtx.currentTime); 
+        osc.type = 'triangle'; // Yumuşak bir vuruş hissi için
+        
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15); // Sesi hızla söndür
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
       }
 
       function updateTimer() {
@@ -122,65 +149,73 @@
           uiMode.style.color = "#d32f2f";
         }
 
-        if (timeLeft <= 0) {
-          endGame();
-        }
+        if (timeLeft <= 0) endGame();
       }
 
       function handleBeat() {
-        // Her 3 vuruşta bir (3 saniye) hedef değiştir
-        if (beatCount % 3 === 0) {
+        // Her 3 vuruşta bir yeni davul seçilir
+        const isNewDrumBeat = (beatCount % 3 === 0);
+        
+        if (isNewDrumBeat) {
           selectNextDrum();
         }
+        
+        // Her saniye (vuruşta) ritm sesini çal
+        playMetronomeSound(isNewDrumBeat);
         beatCount++;
       }
 
       function selectNextDrum() {
-        // Eski aktif davulu sarıya döndür
         if (activeDrum) activeDrum.setAttribute('color', COLOR_IDLE);
 
         if (timeLeft > 30) {
-          // İLK 30 SANİYE: Sırayla (0 -> 1 -> 2 -> 3 -> 0...)
           activeDrum = drums[currentDrumIndex];
           currentDrumIndex = (currentDrumIndex + 1) % drums.length;
         } else {
-          // SON 30 SANİYE: Rastgele
           let randomIndex;
           do {
             randomIndex = Math.floor(Math.random() * drums.length);
-          } while (drums[randomIndex] === activeDrum); // Üst üste aynı davul gelmesin
-          
+          } while (drums[randomIndex] === activeDrum);
           activeDrum = drums[randomIndex];
         }
 
-        // Yeni davulu yeşil yap
         activeDrum.setAttribute('color', COLOR_ACTIVE);
+        
+        // Aktif çizgi rehberini güncelle (Görsel ipucu olarak tüm çizgileri normale döndür)
+        document.querySelectorAll('.line').forEach(l => l.setAttribute('line', 'color', '#78909C'));
       }
 
       function setupScoreDetection() {
-        let isHoveringActive = false;
-
-        drums.forEach(drum => {
-          // İmleç davulun üzerine geldiğinde
-          drum.addEventListener('mouseenter', () => {
-            if (drum === activeDrum) {
-              isHoveringActive = true;
-            }
+        // İmleç takibi için olay dinleyicileri
+        const targets = document.querySelectorAll('.targetable');
+        
+        targets.forEach(target => {
+          target.addEventListener('mouseenter', () => {
+            currentTargetObject = target;
           });
-
-          // İmleç davuldan ayrıldığında
-          drum.addEventListener('mouseleave', () => {
-            isHoveringActive = false;
+          target.addEventListener('mouseleave', () => {
+            if (currentTargetObject === target) {
+              currentTargetObject = null;
+            }
           });
         });
 
-        // Her 100 milisaniyede bir (saniyede 10 kez) imleç içeride mi kontrol et
-        // Bu sayede hasta ne kadar stabil kalırsa o kadar çok puan kazanır
+        // Skor Hesaplama Döngüsü (Her 100 milisaniyede bir)
         scoreInterval = setInterval(() => {
-          if (isHoveringActive && timeLeft > 0) {
+          if (!currentTargetObject || timeLeft <= 0) return;
+
+          // Durum 1: İmleç aktif (yeşil) davulun içindeyse (Yoğun puan: +10)
+          if (currentTargetObject === activeDrum) {
             score += 10;
-            uiScore.textContent = score;
+          } 
+          // Durum 2: İmleç herhangi bir bağlantı çizgisinin üzerindeyse (Çizgi takip puanı: +3)
+          else if (currentTargetObject.classList.contains('line')) {
+            score += 3;
+            // Üzerinde olunan çizgiyi anlık mavi yaparak hastaya görsel geri bildirim verelim
+            currentTargetObject.setAttribute('line', 'color', '#2196F3');
           }
+          
+          uiScore.textContent = score;
         }, 100);
       }
 
@@ -188,11 +223,9 @@
         clearInterval(gameInterval);
         clearInterval(beatInterval);
         clearInterval(scoreInterval);
-        
-        // Tüm davulları sıfırla
         drums.forEach(d => d.setAttribute('color', COLOR_IDLE));
-
-        alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}\n\nTekrar oynamak için sayfayı yenileyebilirsiniz.`);
+        document.querySelectorAll('.line').forEach(l => l.setAttribute('line', 'color', '#78909C'));
+        alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}`);
       }
     </script>
   </body>
