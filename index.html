@@ -2,12 +2,11 @@
 <html lang="tr">
 <head>
     <meta charset="utf-8">
-    <title>Zen VR - Parkinson Dinamik Rehabilitasyon</title>
+    <title>Zen VR - Parkinson Kesin Mesafe Onaylı</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&family=Azeret+Mono&display=swap" rel="stylesheet">
     
     <style>
-        /* 1. MODERN GLASSMORPHISM (CAM EFEKTİ) GİRİŞ MENÜSÜ */
         :root {
             --glass-bg: rgba(255, 255, 255, 0.25);
             --glass-border: rgba(255, 255, 255, 0.4);
@@ -23,7 +22,6 @@
             z-index: 9999; text-align: center;
         }
 
-        /* Şık Şeffaf Cam Panel */
         .glass-panel {
             background: var(--glass-bg);
             backdrop-filter: blur(15px);
@@ -58,7 +56,6 @@
         button:hover { background: #5a7567; }
         button:active { transform: scale(0.97); }
 
-        /* Oyun İçi HUD Göstergeleri */
         #ui-overlay {
             position: fixed; top: 20px; left: 20px;
             background: var(--glass-bg); backdrop-filter: blur(10px);
@@ -66,7 +63,6 @@
             padding: 15px 25px; border-radius: 20px; border: 1px solid var(--glass-border);
             color: #4a4238; font-family: 'Azeret Mono', monospace; font-size: 15px;
             z-index: 999; display: none; line-height: 1.5;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
         .score-val { color: #2e7d32; font-weight: bold; }
     </style>
@@ -119,22 +115,22 @@
         <a-light type="directional" position="2 4 -3" intensity="0.5" color="#fffaf0"></a-light>
 
         <a-entity id="drum-group">
-            <a-circle id="drum-0" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+            <a-circle id="drum-0" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" position="0 1.6 -4">
                 <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
                 <a-circle id="mask-0" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
             </a-circle>
 
-            <a-circle id="drum-1" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+            <a-circle id="drum-1" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" position="-1 1.6 -4">
                 <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
                 <a-circle id="mask-1" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
             </a-circle>
 
-            <a-circle id="drum-2" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+            <a-circle id="drum-2" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" position="1 1.6 -4">
                 <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
                 <a-circle id="mask-2" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
             </a-circle>
 
-            <a-circle id="drum-3" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+            <a-circle id="drum-3" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" position="0 2.5 -4">
                 <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
                 <a-circle id="mask-3" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
             </a-circle>
@@ -171,14 +167,13 @@
         const FIXED_Z = -4;
 
         startBtn.addEventListener('click', async () => {
-            // Klinik Ayarları Al
             BEAT_DURATION = (60 / parseInt(document.getElementById('bpm-select').value)) * 1000;
             DRUM_RADIUS = parseFloat(document.getElementById('size-select').value);
             
-            // Üst üste binmeyi engellemek için iki daire çapının üzerinde kesin sınır mesafesi
-            MIN_DIST = DRUM_RADIUS * 4.6;
+            // İki dairenin merkezleri arasındaki GÜVENLİ MİNİMUM MESAFE: 
+            // 2 Daire Çapı Boşluk + Dairelerin Kendi Yarıçapları = Toplamda Yarıçapın en az 5 Katı olmalı.
+            MIN_DIST = DRUM_RADIUS * 5.2;
 
-            // Geometriyi Yeniden Boyutlandır ve Sınır Halkalarını Ayarla
             drums.forEach((drum, idx) => {
                 drum.setAttribute('radius', DRUM_RADIUS);
                 masks[idx].setAttribute('radius', DRUM_RADIUS);
@@ -186,10 +181,8 @@
                 drum.querySelector('a-ring').setAttribute('radius-outer', DRUM_RADIUS + 0.02);
             });
 
-            // Telefon Ekran Uyku Kilidini Devreye Al (Wake Lock API)
             try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
 
-            // Jiroskop Erişim Kontrolü
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission().then(state => { if (state === 'granted') initGame(); });
             } else { initGame(); }
@@ -200,47 +193,57 @@
             uiOverlay.style.display = 'block';
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            // İlk daireyi merkeze sabitle ve parıltılı yeşile büründür
+            // İlk daireyi merkeze oturt
             drums[activeIndex].setAttribute('position', {x: 0, y: 1.6, z: FIXED_Z});
             masks[activeIndex].setAttribute('scale', '1 1 1');
             masks[activeIndex].setAttribute('material', 'emissiveIntensity', '0.4');
 
-            // Kalan 3 daireyi çakışmasız olarak dağıt
-            drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
+            // Tüm sahneyi çakışmasız dağıtarak oyunu başlat
+            repositionAllNonActiveDrums();
 
-            // Döngü Tetikleyicileri
             gameInterval = setInterval(() => { timeLeft--; uiTimer.textContent = timeLeft; if (timeLeft <= 0) endGame(); }, 1000);
             beatInterval = setInterval(handleBeat, BEAT_DURATION);
             setupScoreDetection();
         }
 
-        // MAKSİMUM KORUMALI ÇAKIŞMA ENGELLEME ALGORİTMASI
-        function randomizeDrumWithoutOverlap(targetDrum, targetIdx) {
-            let valid = false, x, y, attempts = 0;
-            while (!valid && attempts < 250) {
-                // Güvenli görüş penceresi koordinat üretimi
-                x = Math.random() * 4.2 - 2.1; 
-                y = Math.random() * 1.8 + 0.7; 
-                attempts++; 
-                valid = true;
+        // TAM KORUMALI ARAR BULUR GLOBAL DAĞITIM MOTORU
+        function repositionAllNonActiveDrums() {
+            // Aktif olmayan daireleri sırayla temiz alanlara yerleştiriyoruz
+            drums.forEach((drum, idx) => {
+                if (idx === activeIndex) return; // Aktif olanın yerini koru
 
-                // Diğer yerleşmiş tüm elemanlarla aradaki mesafeyi doğrula
-                for (let i = 0; i < drums.length; i++) {
-                    if (i === targetIdx) continue;
-                    let otherPos = drums[i].getAttribute('position');
-                    if (!otherPos) continue;
+                let valid = false;
+                let x, y, attempts = 0;
 
-                    let dX = x - otherPos.x;
-                    let dY = y - otherPos.y;
-                    let distance = Math.sqrt(dX*dX + dY*dY);
+                while (!valid && attempts < 400) {
+                    attempts++;
+                    valid = true;
+                    
+                    // Görüş açısına uygun rastgele konum üret
+                    x = Math.random() * 4.0 - 2.0; 
+                    y = Math.random() * 1.6 + 0.8; 
 
-                    if (distance < MIN_DIST) {
-                        valid = false; // İdeal mesafeden yakınsa reddet, yeniden dene
-                        break;
+                    // Şu ana kadar sahneye yerleşmiş TÜM DAİRELERİ kontrol et
+                    for (let i = 0; i < drums.length; i++) {
+                        if (i === idx) continue; // Kendini kontrol etme
+
+                        let otherPos = drums[i].getAttribute('position');
+                        if (!otherPos) continue;
+
+                        let dX = x - otherPos.x;
+                        let dY = y - otherPos.y;
+                        let distance = Math.sqrt(dX * dX + dY * dY);
+
+                        // Eğer herhangi birine belirlenen güvenli mesafeden yakınsa bu konumu iptal et
+                        if (distance < MIN_DIST) {
+                            valid = false;
+                            break;
+                        }
                     }
                 }
-            }
-            targetDrum.setAttribute('position', {x, y, z: FIXED_Z});
+                // Güvenli yer bulunduğunda ata
+                drum.setAttribute('position', {x: x, y: y, z: FIXED_Z});
+            });
         }
 
         function playMetronomeSound(pitch) {
@@ -267,8 +270,8 @@
                     m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 1');
                     m.setAttribute('material', 'emissiveIntensity', idx === activeIndex ? '0.4' : '0');
                 });
-                // 1. Vuruşta aktif olmayan sarı daireleri çakışmasız zıplat
-                drums.forEach((d, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(d, idx); });
+                // 1. Vuruş başında tüm pasifleri yeni yerlerine tam güvenli mesafeyle uçur
+                repositionAllNonActiveDrums();
             } 
             
             else if (cycle === 2) {
@@ -278,15 +281,15 @@
                 } else {
                     do { nextIndex = Math.floor(Math.random() * 4); } while (nextIndex === activeIndex);
                 }
-                // 2. Vuruşta çakışma ihtimaline karşı son kez doğrula
-                drums.forEach((d, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(d, idx); });
+                // Karar verildikten sonra, çakışma ihtimaline karşı konumları son kez tazele
+                repositionAllNonActiveDrums();
             } 
             
             else if (cycle === 3) {
-                playMetronomeSound(280); // Tiz geçiş uyarısı
+                playMetronomeSound(280);
                 isTransitioning = true;
                 buildDynamicLine(drums[activeIndex], drums[nextIndex]);
-                animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2); // 2 vuruş süren yumuşak geçiş
+                animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2);
             }
             
             else if (cycle === 4) {
@@ -314,7 +317,6 @@
             dynamicLine.setAttribute('rotation', `0 0 ${angle - 90}`);
             dynamicLine.setAttribute('material', 'opacity', '0.8');
             
-            // Ok Dokusunun İleri Doğru Akış Animasyonu (Hareketsizliği Kırar)
             dynamicLine.removeAttribute('animation__flow');
             dynamicLine.setAttribute('animation__flow', `property: material.offset.y; from: 0; to: -4; dur: 2500; easing: linear; loop: true`);
         }
@@ -323,15 +325,10 @@
             let start = performance.now();
             function step(now) {
                 let p = (now - start) / dur; if (p > 1) p = 1;
-                
-                // Eski yeşil alan daralıyor, parıltısı sönüyor
                 masks[oldIdx].setAttribute('scale', `${1-p} ${1-p} 1`);
                 masks[oldIdx].setAttribute('material', 'emissiveIntensity', (1-p)*0.4);
-                
-                // Yeni yeşil alan genişliyor, parıltısı artıyor
                 masks[newIdx].setAttribute('scale', `${p} ${p} 1`);
                 masks[newIdx].setAttribute('material', 'emissiveIntensity', p*0.4);
-                
                 if (p < 1 && isTransitioning) requestAnimationFrame(step);
             }
             requestAnimationFrame(step);
