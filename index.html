@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Parkinson Klinik Rehabilitasyon Platformu - Daire Düzeltme</title>
+    <title>Parkinson Klinik Rehabilitasyon Platformu - Mesafe Düzeltme</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
       #start-screen {
@@ -118,40 +118,36 @@
       let currentTargetObject = null;
       let isTransitioning = false;
 
-      // Dinamik Gelecek Parametreler
       let BEAT_DURATION = 1500; 
       let DRUM_RADIUS = 0.40;
-      let MIN_DIST = 1.6; 
+      let MIN_DIST = 1.6; // Güvenli sınır mesafesi burada güncellenecek
 
-      const MIN_X = -2.4, MAX_X = 2.4;
+      const MIN_X = -2.2, MAX_X = 2.2;
       const MIN_Y = 0.6, MAX_Y = 2.4;
-      const FIXED_Z = -4; // Davullar havada asılı kalıp kameraya bakacak
+      const FIXED_Z = -4;
 
       startBtn.addEventListener('click', async () => {
-        // Menü Değerlerini Al
         let selectedBPM = parseInt(document.getElementById('bpm-select').value);
         BEAT_DURATION = (60 / selectedBPM) * 1000;
 
         DRUM_RADIUS = parseFloat(document.getElementById('size-select').value);
-        MIN_DIST = DRUM_RADIUS * 4; 
+        
+        // KRİTİK DÜZELTME: İki daire arasında en az iki daire çapı (4 kat yarıçap) + merkezler arası mesafe için toplam pay
+        MIN_DIST = DRUM_RADIUS * 4.5; 
 
-        // Davul (Daire) Boyutlarını Güncelle
         drums.forEach((drum, idx) => {
           drum.setAttribute('radius', DRUM_RADIUS);
-          masks[idx].setAttribute('radius', DRUM_RADIUS); // Maske de aynı boyutta
+          masks[idx].setAttribute('radius', DRUM_RADIUS);
         });
 
-        // 1. Ekran Kapanmasını Engelleme (Wake Lock API)
         try {
           if ('wakeLock' in navigator) {
             wakeLock = await navigator.wakeLock.request('screen');
-            console.log("Ekran uyanık kalma kilidi aktif edildi.");
           }
         } catch (err) {
-          console.warn("Ekran kilidi bu tarayıcıda desteklenmiyor veya engellendi:", err);
+          console.warn(err);
         }
 
-        // 2. Jiroskop İzin Süreci
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
           DeviceOrientationEvent.requestPermission().then(state => {
             if (state === 'granted') initGame();
@@ -167,11 +163,11 @@
         uiOverlay.style.display = 'block';
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // İlk davul merkezde tam yeşil başlar (scale 1 1 1 kilitlendi)
+        // İlk davul merkezde tam sabit başlar
         drums[activeIndex].setAttribute('position', {x: 0, y: 1.5, z: FIXED_Z});
         masks[activeIndex].setAttribute('scale', '1 1 1');
 
-        // Diğer davulları üst üste binmeyecek şekilde ilk kez konumlandır
+        // Diğer davulları çakışmasız dağıt
         drums.forEach((drum, idx) => {
           if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx);
         });
@@ -181,28 +177,30 @@
         setupScoreDetection();
       }
 
-      // ÜST ÜSTE BİNMEYİ ENGELLEYEN AKILLI KONUMLANDIRMA
+      // KESİN ÇAKIŞMA ENGELLEME ALGORİTMASI
       function randomizeDrumWithoutOverlap(targetDrum, targetIdx) {
         let attempts = 0;
         let validPosition = false;
         let newX, newY;
 
-        while (!validPosition && attempts < 100) {
+        while (!validPosition && attempts < 200) {
           attempts++;
           newX = Math.random() * (MAX_X - MIN_X) + MIN_X;
           newY = Math.random() * (MAX_Y - MIN_Y) + MIN_Y;
           validPosition = true;
 
+          // Aktif olan dahil tüm diğer davul pozisyonlarını kontrol et
           for (let i = 0; i < drums.length; i++) {
             if (i === targetIdx) continue;
             
             let otherPos = drums[i].getAttribute('position');
-            if (!otherPos || (otherPos.x === 0 && otherPos.y === 0)) continue;
+            if (!otherPos) continue;
 
             let dx = newX - otherPos.x;
             let dy = newY - otherPos.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
 
+            // Eğer mesafe güvenli sınırdan küçükse bu konumu reddet
             if (dist < MIN_DIST) {
               validPosition = false;
               break;
@@ -239,10 +237,9 @@
         if (currentCycleBeat === 1) {
           isTransitioning = false;
           playMetronomeSound(150);
-          // Kesin eşitleme: Aktif tam yeşil (scale 1), diğerleri sıfır
           masks.forEach((m, idx) => m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 1'));
           
-          // Sarı davulları üst üste binmeyecek şekilde ışınla
+          // Sarı davulları kesin mesafeli ışınla
           drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
         } 
         
@@ -255,7 +252,7 @@
             do { nextIndex = Math.floor(Math.random() * drums.length); } while (nextIndex === activeIndex);
           }
 
-          // Son kez çakışmasız ışınlama yap
+          // Son bir kez daha güvenli mesafe kontrolüyle konumlandır
           drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
         } 
         
@@ -264,7 +261,7 @@
           isTransitioning = true;
 
           buildDynamicLine(drums[activeIndex], drums[nextIndex]);
-          animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2); // 2 vuruş süren süzülme
+          animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2); 
         }
         
         else if (currentCycleBeat === 4) {
@@ -300,7 +297,6 @@
         dynamicLine.setAttribute('material', 'opacity', '0.9');
       }
 
-      // Düz daire maskesinin tam büyümesini garanti eden geçiş animasyonu (scale X ve Y eksenlerinde değişir)
       function animateTransition(oldIdx, newIdx, duration) {
         let startTime = performance.now();
 
@@ -308,18 +304,15 @@
           let progress = (now - startTime) / duration;
           if (progress > 1) progress = 1;
 
-          // Eski yeşil daire küçülüyor (X ve Y'den)
           let oldScale = 1 - progress;
           masks[oldIdx].setAttribute('scale', `${oldScale} ${oldScale} 1`);
 
-          // Yeni yeşil daire büyüyor (X ve Y'den tam yeşil sarıyı kaplama)
           let newScale = progress;
           masks[newIdx].setAttribute('scale', `${newScale} ${newScale} 1`);
 
           if (progress < 1 && isTransitioning) {
             requestAnimationFrame(step);
           } else {
-            // Tam bitiş noktası eşitleme (Kritik: Z daima 1 kalır)
             masks[oldIdx].setAttribute('scale', '0 0 1');
             masks[newIdx].setAttribute('scale', '1 1 1');
           }
@@ -352,12 +345,9 @@
         clearInterval(gameInterval);
         clearInterval(beatInterval);
         clearInterval(scoreInterval);
-        
-        // Ekran kilidini serbest bırak
         if (wakeLock !== null) {
           wakeLock.release().then(() => { wakeLock = null; });
         }
-
         masks.forEach(m => m.setAttribute('scale', '0 0 1'));
         dynamicLine.setAttribute('material', 'opacity', '0');
         alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}`);
