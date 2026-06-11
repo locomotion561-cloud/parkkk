@@ -2,16 +2,20 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Parkinson Ritim Rehabilitasyonu</title>
+    <title>Parkinson Ritim ve Odak Egzersizi</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    
     <style>
-      /* Mobil tarayıcıda izin isteme butonu için şık bir arayüz */
       #start-screen {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: #1a237e; color: white; display: flex;
         flex-direction: column; align-items: center; justify-content: center;
-        z-index: 9999; font-family: sans-serif;
+        z-index: 9999; font-family: sans-serif; text-align: center;
+      }
+      #ui-overlay {
+        position: fixed; top: 10px; left: 10px; color: #1a237e;
+        font-family: sans-serif; font-size: 20px; font-weight: bold;
+        z-index: 999; pointer-events: none; background: rgba(255,255,255,0.8);
+        padding: 10px; border-radius: 8px;
       }
       button {
         padding: 15px 30px; font-size: 18px; border: none;
@@ -22,104 +26,173 @@
   </head>
   <body>
 
+    <div id="ui-overlay" style="display: none;">
+      <div>Süre: <span id="ui-timer">60</span> sn</div>
+      <div>Mod: <span id="ui-mode">Sıralı</span></div>
+      <div>Skor: <span id="ui-score">0</span></div>
+    </div>
+
     <div id="start-screen">
       <h2>Parkinson Ritim Egzersizi</h2>
-      <p>Başlamak ve jiroskopu aktif etmek için butona basın.</p>
-      <button id="start-btn">OYUNU BAŞLAT</button>
+      <p style="max-width: 400px; padding: 0 20px;">
+        Telefonu yatay tutun. Başınızı hareket ettirerek ortadaki kırmızı imleci yeşile dönen davulların içinde tutmaya çalışın!
+      </p>
+      <button id="start-btn">EGZERSİZİ BAŞLAT</button>
     </div>
 
     <a-scene vr-mode-ui="enabled: false">
-      
       <a-sky color="#ECEFF1"></a-sky>
       <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100" color="#CFD8DC"></a-plane>
 
-      <a-cylinder id="drum-left" class="drum" position="-2 1.5 -4" radius="0.5" height="0.2" rotation="90 0 0" color="#78909C"></a-cylinder>
-      <a-cylinder id="drum-center" class="drum" position="0 1.5 -4" radius="0.5" height="0.2" rotation="90 0 0" color="#78909C"></a-cylinder>
-      <a-cylinder id="drum-right" class="drum" position="2 1.5 -4" radius="0.5" height="0.2" rotation="90 0 0" color="#78909C"></a-clock>
-
-      <a-light type="ambient" color="#fff"></a-light>
+      <a-cylinder id="drum-0" class="drum" position="-2.2 2.2 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-1" class="drum" position="2.2 2.2 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-2" class="drum" position="2.2 0.8 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
+      <a-cylinder id="drum-3" class="drum" position="-2.2 0.8 -4" radius="0.4" height="0.1" rotation="90 0 0" color="#FBC02D"></a-cylinder>
 
       <a-entity camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" position="0 1.5 0">
         <a-cursor 
           id="my-cursor"
-          raycaster="objects: .drum" 
-          fuse="true" 
-          fuse-timeout="600"
-          color="#FF3D00"
-          scale="1.5 1.5 1.5">
+          raycaster="objects: .drum; interval: 50" 
+          fuse="false"
+          color="#D50000"
+          scale="2 2 2">
         </a-cursor>
       </a-entity>
-
     </a-scene>
 
     <script>
-      // Mobil cihazlarda jiroskop (DeviceOrientation) izni almak zorunludur.
       const startScreen = document.getElementById('start-screen');
       const startBtn = document.getElementById('start-btn');
-      const scene = document.querySelector('a-scene');
+      const uiOverlay = document.getElementById('ui-overlay');
+      const uiTimer = document.getElementById('ui-timer');
+      const uiMode = document.getElementById('ui-mode');
+      const uiScore = document.getElementById('ui-score');
+
+      let score = 0;
+      let timeLeft = 60;
+      let gameInterval, beatInterval, scoreInterval;
+      
+      const drums = [
+        document.getElementById('drum-0'),
+        document.getElementById('drum-1'),
+        document.getElementById('drum-2'),
+        document.getElementById('drum-3')
+      ];
+
+      let activeDrum = null;
+      let currentDrumIndex = 0;
+      let beatCount = 0;
+
+      // Sabit Renkler
+      const COLOR_IDLE = "#FBC02D";   // Sarı
+      const COLOR_ACTIVE = "#388E3C"; // Klinik Yeşil
 
       startBtn.addEventListener('click', () => {
-        // iOS 13+ için jiroskop izni isteme ritüeli
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission()
-            .then(permissionState => {
-              if (permissionState === 'granted') {
-                initGame();
-              } else {
-                alert('Jiroskop izni reddedildi. Oyun çalışmaz.');
-              }
-            })
-            .catch(console.error);
+          DeviceOrientationEvent.requestPermission().then(state => {
+            if (state === 'granted') initGame();
+            else alert('Jiroskop izni gerekli!');
+          }).catch(console.error);
         } else {
-          // Android veya masaüstü tarayıcılar için doğrudan başlat
           initGame();
         }
       });
 
       function initGame() {
-        startScreen.style.display = 'none'; // Giriş ekranını gizle
+        startScreen.style.display = 'none';
+        uiOverlay.style.display = 'block';
         
-        // Oyun mekaniklerini tetikleyen ana döngüyü başlatacağız
-        startGameLogic();
+        // 1. Ana Geri Sayım Zamanlayıcısı (1 saniyede bir)
+        gameInterval = setInterval(updateTimer, 1000);
+
+        // 2. Ritim Zamanlayıcısı (60 BPM = Saniyede 1 vuruş)
+        // Her vuruşta beat dikişlerini ve 3 vuruş kuralını kontrol eder
+        beatInterval = setInterval(handleBeat, 1000);
+
+        // 3. Puanlama Kontrolü (İmleç davulun içindeyse sürekli puan akar)
+        setupScoreDetection();
       }
 
-      // OYUN MANTIĞI VE RİTİM DÖNGÜSÜ
-      let drums = Array.from(document.querySelectorAll('.drum'));
-      let activeDrum = null;
-      let score = 0;
+      function updateTimer() {
+        timeLeft--;
+        uiTimer.textContent = timeLeft;
 
-      function startGameLogic() {
-        // Her 2 saniyede bir (Parkinson için ideal bir başlangıç ritmi) bir davul seçeceğiz
-        setInterval(activateRandomDrum, 2000);
+        if (timeLeft <= 30) {
+          uiMode.textContent = "Rastgele";
+          uiMode.style.color = "#d32f2f";
+        }
 
-        // Davullara "bakıldığında" (vurulduğunda) ne olacağını tanımlayalım
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }
+
+      function handleBeat() {
+        // Her 3 vuruşta bir (3 saniye) hedef değiştir
+        if (beatCount % 3 === 0) {
+          selectNextDrum();
+        }
+        beatCount++;
+      }
+
+      function selectNextDrum() {
+        // Eski aktif davulu sarıya döndür
+        if (activeDrum) activeDrum.setAttribute('color', COLOR_IDLE);
+
+        if (timeLeft > 30) {
+          // İLK 30 SANİYE: Sırayla (0 -> 1 -> 2 -> 3 -> 0...)
+          activeDrum = drums[currentDrumIndex];
+          currentDrumIndex = (currentDrumIndex + 1) % drums.length;
+        } else {
+          // SON 30 SANİYE: Rastgele
+          let randomIndex;
+          do {
+            randomIndex = Math.floor(Math.random() * drums.length);
+          } while (drums[randomIndex] === activeDrum); // Üst üste aynı davul gelmesin
+          
+          activeDrum = drums[randomIndex];
+        }
+
+        // Yeni davulu yeşil yap
+        activeDrum.setAttribute('color', COLOR_ACTIVE);
+      }
+
+      function setupScoreDetection() {
+        let isHoveringActive = false;
+
         drums.forEach(drum => {
-          drum.addEventListener('click', function () {
-            if (this === activeDrum) {
-              // Doğru davula vuruldu!
-              this.setAttribute('color', '#4CAF50'); // Yeşil yap (Başarılı geri bildirim)
-              score++;
-              console.log("Skor: " + score);
-              
-              // Kısa süre sonra eski rengine döndür
-              setTimeout(() => {
-                if(this === activeDrum) this.setAttribute('color', '#78909C');
-              }, 300);
+          // İmleç davulun üzerine geldiğinde
+          drum.addEventListener('mouseenter', () => {
+            if (drum === activeDrum) {
+              isHoveringActive = true;
             }
           });
+
+          // İmleç davuldan ayrıldığında
+          drum.addEventListener('mouseleave', () => {
+            isHoveringActive = false;
+          });
         });
+
+        // Her 100 milisaniyede bir (saniyede 10 kez) imleç içeride mi kontrol et
+        // Bu sayede hasta ne kadar stabil kalırsa o kadar çok puan kazanır
+        scoreInterval = setInterval(() => {
+          if (isHoveringActive && timeLeft > 0) {
+            score += 10;
+            uiScore.textContent = score;
+          }
+        }, 100);
       }
 
-      function activateRandomDrum() {
-        // Önceki aktif davulu sıfırla
-        drums.forEach(d => d.setAttribute('color', '#78909C'));
+      function endGame() {
+        clearInterval(gameInterval);
+        clearInterval(beatInterval);
+        clearInterval(scoreInterval);
+        
+        // Tüm davulları sıfırla
+        drums.forEach(d => d.setAttribute('color', COLOR_IDLE));
 
-        // Rastgele yeni bir davul seç
-        const randomIndex = Math.floor(Math.random() * drums.length);
-        activeDrum = drums[randomIndex];
-
-        // Seçilen davulu PARLAT (Parkinson hastası için net görsel uyarı - Neon Sarı/Turuncu)
-        activeDrum.setAttribute('color', '#FFEB3B');
+        alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}\n\nTekrar oynamak için sayfayı yenileyebilirsiniz.`);
       }
     </script>
   </body>
