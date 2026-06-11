@@ -1,357 +1,366 @@
 <!DOCTYPE html>
-<html>
-  <head>
+<html lang="tr">
+<head>
     <meta charset="utf-8">
-    <title>Parkinson Klinik Rehabilitasyon Platformu - Mesafe Düzeltme</title>
+    <title>Zen VR - Parkinson Dinamik Rehabilitasyon</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&family=Azeret+Mono&display=swap" rel="stylesheet">
+    
     <style>
-      #start-screen {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: #1a237e; color: white; display: flex;
-        flex-direction: column; align-items: center; justify-content: center;
-        z-index: 9999; font-family: sans-serif; text-align: center;
-      }
-      #ui-overlay {
-        position: fixed; top: 10px; left: 10px; color: #1a237e;
-        font-family: sans-serif; font-size: 20px; font-weight: bold;
-        z-index: 999; pointer-events: none; background: rgba(255,255,255,0.8);
-        padding: 10px; border-radius: 8px;
-      }
-      .menu-group {
-        margin: 15px 0; background: rgba(255,255,255,0.1); 
-        padding: 15px; border-radius: 10px; width: 320px;
-      }
-      label { font-weight: bold; display: block; margin-bottom: 8px; }
-      select {
-        width: 100%; padding: 10px; font-size: 16px; border-radius: 5px;
-        border: none; background: white; color: #1a237e; font-weight: bold;
-      }
-      button {
-        padding: 15px 40px; font-size: 18px; border: none;
-        border-radius: 25px; background: #ff6f00; color: white;
-        cursor: pointer; margin-top: 20px; font-weight: bold;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      }
-    </style>
-  </head>
-  <body>
+        /* 1. MODERN GLASSMORPHISM (CAM EFEKTİ) GİRİŞ MENÜSÜ */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --zen-green: #6d8c7c;
+        }
 
-    <div id="ui-overlay" style="display: none;">
-      <div>Süre: <span id="ui-timer">60</span> sn</div>
-      <div>Vuruş: <span id="ui-beat">1</span> / 4</div>
-      <div>Skor: <span id="ui-score">0</span></div>
+        body { margin: 0; overflow: hidden; font-family: 'Poppins', sans-serif; }
+
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #f5e6d3 0%, #dcd0b9 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; text-align: center;
+        }
+
+        /* Şık Şeffaf Cam Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            width: 80%; max-width: 450px;
+            color: #4a4238;
+        }
+
+        h2 { font-weight: 700; margin-top: 0; margin-bottom: 10px; letter-spacing: -1px; }
+        p { font-size: 14px; opacity: 0.8; margin-bottom: 25px; }
+
+        .menu-group { margin: 20px 0; text-align: left; }
+        label { font-size: 13px; font-weight: 500; margin-left: 5px; color: #6d6255; }
+
+        select {
+            width: 100%; padding: 14px; font-size: 16px; border-radius: 15px;
+            border: 1px solid var(--glass-border); background: rgba(255,255,255,0.7);
+            color: #4a4238; font-family: 'Poppins'; outline: none; margin-top: 6px;
+            font-weight: bold; cursor: pointer;
+        }
+
+        button {
+            width: 100%; padding: 18px; font-size: 18px; border: none;
+            border-radius: 18px; background: var(--zen-green); color: white;
+            cursor: pointer; margin-top: 15px; font-weight: 700;
+            transition: all 0.3s ease; box-shadow: 0 10px 20px rgba(109, 140, 124, 0.3);
+        }
+        button:hover { background: #5a7567; }
+        button:active { transform: scale(0.97); }
+
+        /* Oyun İçi HUD Göstergeleri */
+        #ui-overlay {
+            position: fixed; top: 20px; left: 20px;
+            background: var(--glass-bg); backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 15px 25px; border-radius: 20px; border: 1px solid var(--glass-border);
+            color: #4a4238; font-family: 'Azeret Mono', monospace; font-size: 15px;
+            z-index: 999; display: none; line-height: 1.5;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .score-val { color: #2e7d32; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-overlay">
+        <div>SÜRE: <span id="ui-timer">60</span> sn</div>
+        <div>SKOR: <span id="ui-score" class="score-val">0</span></div>
     </div>
 
     <div id="start-screen">
-      <h2>Parkinson Egzersiz Ayarları</h2>
-      
-      <div class="menu-group">
-        <label for="bpm-select">Egzersiz Hızı (Tempo):</label>
-        <select id="bpm-select">
-          <option value="30">30 BPM (Çok Yavaş)</option>
-          <option value="40" selected>40 BPM (Standart)</option>
-          <option value="50">50 BPM (Orta Hızlı)</option>
-          <option value="60">60 BPM (Hızlı)</option>
-        </select>
-      </div>
+        <div class="glass-panel">
+            <h2>ZEN REHABILITATION</h2>
+            <p>Doğal materyaller ve sakinleştirici ritimle motor beceri egzersizi.</p>
+            
+            <div class="menu-group">
+                <label for="bpm-select">Metronom Tempo (Hız)</label>
+                <select id="bpm-select">
+                    <option value="30">30 BPM - Çok Sakin / Ağır Rijidite</option>
+                    <option value="40" selected>40 BPM - Standart Klinik Seans</option>
+                    <option value="50">50 BPM - Dinamik Koordinasyon</option>
+                    <option value="60">60 BPM - İleri Düzey Takip</option>
+                </select>
+            </div>
 
-      <div class="menu-group">
-        <label for="size-select">Davul (Hedef) Boyutu:</label>
-        <select id="size-select">
-          <option value="0.55">Büyük (Kolay Odaklanma)</option>
-          <option value="0.40" selected>Orta (Klinik Standart)</option>
-          <option value="0.28">Küçük (Zor Kontrol)</option>
-        </select>
-      </div>
+            <div class="menu-group">
+                <label for="size-select">Hedef Daire Boyutu</label>
+                <select id="size-select">
+                    <option value="0.55">Geniş (Kolay Odaklanma)</option>
+                    <option value="0.40" selected>Normal (Klinik Standart)</option>
+                    <option value="0.28">Dar (İnce Tremor Kontrolü)</option>
+                </select>
+            </div>
 
-      <button id="start-btn">EKRANI KİLİTLE & BAŞLAT</button>
+            <button id="start-btn">ODAKLAN VE BAŞLAT</button>
+        </div>
     </div>
 
     <a-scene vr-mode-ui="enabled: false">
-      <a-sky color="#ECEFF1"></a-sky>
-      <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100" color="#CFD8DC"></a-plane>
+        <a-assets>
+            <img id="zen-sky" src="https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=2048&q=80">
+            <img id="wood-tex" src="https://images.unsplash.com/photo-1541123437800-1bb1317badc2?auto=format&fit=crop&w=500&q=80">
+            <img id="arrow-flow" src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Linear_arrows_pattern.png">
+        </a-assets>
 
-      <a-circle id="drum-0" class="drum targetable" rotation="0 0 0" color="#FBC02D">
-        <a-circle id="mask-0" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
-      </a-circle>
+        <a-sky src="#zen-sky" rotation="0 -90 0" color="#f5f5dc"></a-sky>
+        
+        <a-light type="ambient" color="#f5f5dc" intensity="0.7"></a-light>
+        <a-light type="directional" position="2 4 -3" intensity="0.5" color="#fffaf0"></a-light>
 
-      <a-circle id="drum-1" class="drum targetable" rotation="0 0 0" color="#FBC02D">
-        <a-circle id="mask-1" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
-      </a-circle>
+        <a-entity id="drum-group">
+            <a-circle id="drum-0" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+                <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
+                <a-circle id="mask-0" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
+            </a-circle>
 
-      <a-circle id="drum-2" class="drum targetable" rotation="0 0 0" color="#FBC02D">
-        <a-circle id="mask-2" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
-      </a-circle>
+            <a-circle id="drum-1" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+                <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
+                <a-circle id="mask-1" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
+            </a-circle>
 
-      <a-circle id="drum-3" class="drum targetable" rotation="0 0 0" color="#FBC02D">
-        <a-circle id="mask-3" color="#388E3C" scale="0 0 1" position="0 0 0.01"></a-circle>
-      </a-circle>
+            <a-circle id="drum-2" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+                <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
+                <a-circle id="mask-2" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
+            </a-circle>
 
-      <a-box id="dynamic-line" class="targetable" width="0.15" height="1" depth="0.01" material="color: #2196F3; opacity: 0; transparent: true" position="0 0 -100"></a-box>
+            <a-circle id="drum-3" class="drum targetable" material="src: #wood-tex; roughness: 0.9" radius="0.4" rotation="0 0 0">
+                <a-ring color="#4a4238" radius-inner="0.39" radius-outer="0.42" position="0 0 0.01"></a-ring>
+                <a-circle id="mask-3" color="#6d8c7c" radius="0.4" scale="0 0 1" position="0 0 0.02" material="emissive: #6d8c7c; emissiveIntensity: 0"></a-circle>
+            </a-circle>
+        </a-entity>
 
-      <a-entity camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" position="0 1.5 0">
-        <a-cursor id="my-cursor" raycaster="objects: .targetable; interval: 15" fuse="false" color="#D50000" scale="2 2 2"></a-cursor>
-      </a-entity>
+        <a-box id="dynamic-line" class="targetable" width="0.22" height="1" depth="0.01" 
+               material="src: #arrow-flow; repeat: 1 4; transparent: true; opacity: 0; color: #6d8c7c" 
+               position="0 0 -100"></a-box>
+
+        <a-entity camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" position="0 1.6 0">
+            <a-cursor id="my-cursor" raycaster="objects: .targetable; interval: 15" fuse="false" color="#4a4238" scale="2.5 2.5 2.5"></a-cursor>
+        </a-entity>
     </a-scene>
 
     <script>
-      const startScreen = document.getElementById('start-screen');
-      const startBtn = document.getElementById('start-btn');
-      const uiOverlay = document.getElementById('ui-overlay');
-      const uiTimer = document.getElementById('ui-timer');
-      const uiBeat = document.getElementById('ui-beat');
-      const uiScore = document.getElementById('ui-score');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const uiOverlay = document.getElementById('ui-overlay');
+        const uiTimer = document.getElementById('ui-timer');
+        const uiScore = document.getElementById('ui-score');
 
-      let score = 0;
-      let timeLeft = 60;
-      let gameInterval, beatInterval, scoreInterval;
-      let audioCtx = null;
-      let wakeLock = null; 
-      
-      const drums = [document.getElementById('drum-0'), document.getElementById('drum-1'), document.getElementById('drum-2'), document.getElementById('drum-3')];
-      const masks = [document.getElementById('mask-0'), document.getElementById('mask-1'), document.getElementById('mask-2'), document.getElementById('mask-3')];
-      const dynamicLine = document.getElementById('dynamic-line');
-
-      let activeIndex = 0;
-      let nextIndex = 1;
-      let beatCount = 0;
-      let currentTargetObject = null;
-      let isTransitioning = false;
-
-      let BEAT_DURATION = 1500; 
-      let DRUM_RADIUS = 0.40;
-      let MIN_DIST = 1.6; // Güvenli sınır mesafesi burada güncellenecek
-
-      const MIN_X = -2.2, MAX_X = 2.2;
-      const MIN_Y = 0.6, MAX_Y = 2.4;
-      const FIXED_Z = -4;
-
-      startBtn.addEventListener('click', async () => {
-        let selectedBPM = parseInt(document.getElementById('bpm-select').value);
-        BEAT_DURATION = (60 / selectedBPM) * 1000;
-
-        DRUM_RADIUS = parseFloat(document.getElementById('size-select').value);
+        let score = 0, timeLeft = 60;
+        let gameInterval, beatInterval, scoreInterval, wakeLock = null;
+        let audioCtx = null;
         
-        // KRİTİK DÜZELTME: İki daire arasında en az iki daire çapı (4 kat yarıçap) + merkezler arası mesafe için toplam pay
-        MIN_DIST = DRUM_RADIUS * 4.5; 
+        const drums = Array.from(document.querySelectorAll('.drum'));
+        const masks = Array.from(document.querySelectorAll('a-circle[id^="mask-"]'));
+        const dynamicLine = document.getElementById('dynamic-line');
 
-        drums.forEach((drum, idx) => {
-          drum.setAttribute('radius', DRUM_RADIUS);
-          masks[idx].setAttribute('radius', DRUM_RADIUS);
-        });
+        let activeIndex = 0, nextIndex = 1, beatCount = 0;
+        let currentTargetObject = null, isTransitioning = false;
 
-        try {
-          if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-          }
-        } catch (err) {
-          console.warn(err);
-        }
+        let BEAT_DURATION = 1500, DRUM_RADIUS = 0.40, MIN_DIST = 1.8;
+        const FIXED_Z = -4;
 
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission().then(state => {
-            if (state === 'granted') initGame();
-            else alert('Jiroskop izni gerekli!');
-          }).catch(console.error);
-        } else {
-          initGame();
-        }
-      });
-
-      function initGame() {
-        startScreen.style.display = 'none';
-        uiOverlay.style.display = 'block';
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        // İlk davul merkezde tam sabit başlar
-        drums[activeIndex].setAttribute('position', {x: 0, y: 1.5, z: FIXED_Z});
-        masks[activeIndex].setAttribute('scale', '1 1 1');
-
-        // Diğer davulları çakışmasız dağıt
-        drums.forEach((drum, idx) => {
-          if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx);
-        });
-
-        gameInterval = setInterval(updateTimer, 1000);
-        beatInterval = setInterval(handleBeat, BEAT_DURATION);
-        setupScoreDetection();
-      }
-
-      // KESİN ÇAKIŞMA ENGELLEME ALGORİTMASI
-      function randomizeDrumWithoutOverlap(targetDrum, targetIdx) {
-        let attempts = 0;
-        let validPosition = false;
-        let newX, newY;
-
-        while (!validPosition && attempts < 200) {
-          attempts++;
-          newX = Math.random() * (MAX_X - MIN_X) + MIN_X;
-          newY = Math.random() * (MAX_Y - MIN_Y) + MIN_Y;
-          validPosition = true;
-
-          // Aktif olan dahil tüm diğer davul pozisyonlarını kontrol et
-          for (let i = 0; i < drums.length; i++) {
-            if (i === targetIdx) continue;
+        startBtn.addEventListener('click', async () => {
+            // Klinik Ayarları Al
+            BEAT_DURATION = (60 / parseInt(document.getElementById('bpm-select').value)) * 1000;
+            DRUM_RADIUS = parseFloat(document.getElementById('size-select').value);
             
-            let otherPos = drums[i].getAttribute('position');
-            if (!otherPos) continue;
+            // Üst üste binmeyi engellemek için iki daire çapının üzerinde kesin sınır mesafesi
+            MIN_DIST = DRUM_RADIUS * 4.6;
 
-            let dx = newX - otherPos.x;
-            let dy = newY - otherPos.y;
-            let dist = Math.sqrt(dx*dx + dy*dy);
+            // Geometriyi Yeniden Boyutlandır ve Sınır Halkalarını Ayarla
+            drums.forEach((drum, idx) => {
+                drum.setAttribute('radius', DRUM_RADIUS);
+                masks[idx].setAttribute('radius', DRUM_RADIUS);
+                drum.querySelector('a-ring').setAttribute('radius-inner', DRUM_RADIUS - 0.01);
+                drum.querySelector('a-ring').setAttribute('radius-outer', DRUM_RADIUS + 0.02);
+            });
 
-            // Eğer mesafe güvenli sınırdan küçükse bu konumu reddet
-            if (dist < MIN_DIST) {
-              validPosition = false;
-              break;
-            }
-          }
-        }
-        targetDrum.setAttribute('position', {x: newX, y: newY, z: FIXED_Z});
-      }
+            // Telefon Ekran Uyku Kilidini Devreye Al (Wake Lock API)
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
 
-      function playMetronomeSound(pitch) {
-        if (!audioCtx) return;
-        let osc = audioCtx.createOscillator();
-        let gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(pitch, audioCtx.currentTime); 
-        osc.type = 'triangle';
-        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.15);
-      }
-
-      function updateTimer() {
-        timeLeft--;
-        uiTimer.textContent = timeLeft;
-        if (timeLeft <= 0) endGame();
-      }
-
-      function handleBeat() {
-        let currentCycleBeat = (beatCount % 4) + 1;
-        uiBeat.textContent = currentCycleBeat;
-
-        if (currentCycleBeat === 1) {
-          isTransitioning = false;
-          playMetronomeSound(150);
-          masks.forEach((m, idx) => m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 1'));
-          
-          // Sarı davulları kesin mesafeli ışınla
-          drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
-        } 
-        
-        else if (currentCycleBeat === 2) {
-          playMetronomeSound(150);
-          
-          if (timeLeft > 30) {
-            nextIndex = (activeIndex + 1) % drums.length;
-          } else {
-            do { nextIndex = Math.floor(Math.random() * drums.length); } while (nextIndex === activeIndex);
-          }
-
-          // Son bir kez daha güvenli mesafe kontrolüyle konumlandır
-          drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
-        } 
-        
-        else if (currentCycleBeat === 3) {
-          playMetronomeSound(300);
-          isTransitioning = true;
-
-          buildDynamicLine(drums[activeIndex], drums[nextIndex]);
-          animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2); 
-        }
-        
-        else if (currentCycleBeat === 4) {
-          playMetronomeSound(300);
-        }
-
-        beatCount++;
-
-        if (currentCycleBeat === 4) {
-          setTimeout(() => {
-            dynamicLine.setAttribute('material', 'opacity', '0');
-            dynamicLine.setAttribute('position', '0 0 -100');
-            activeIndex = nextIndex;
-          }, BEAT_DURATION - 30);
-        }
-      }
-
-      function buildDynamicLine(drumA, drumB) {
-        let posA = drumA.getAttribute('position');
-        let posB = drumB.getAttribute('position');
-
-        let midX = (posA.x + posB.x) / 2;
-        let midY = (posA.y + posB.y) / 2;
-        
-        let dx = posB.x - posA.x;
-        let dy = posB.y - posA.y;
-        let distance = Math.sqrt(dx*dx + dy*dy);
-        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-        dynamicLine.setAttribute('position', {x: midX, y: midY, z: FIXED_Z + 0.02});
-        dynamicLine.setAttribute('height', distance);
-        dynamicLine.setAttribute('rotation', `0 0 ${angle - 90}`);
-        dynamicLine.setAttribute('material', 'opacity', '0.9');
-      }
-
-      function animateTransition(oldIdx, newIdx, duration) {
-        let startTime = performance.now();
-
-        function step(now) {
-          let progress = (now - startTime) / duration;
-          if (progress > 1) progress = 1;
-
-          let oldScale = 1 - progress;
-          masks[oldIdx].setAttribute('scale', `${oldScale} ${oldScale} 1`);
-
-          let newScale = progress;
-          masks[newIdx].setAttribute('scale', `${newScale} ${newScale} 1`);
-
-          if (progress < 1 && isTransitioning) {
-            requestAnimationFrame(step);
-          } else {
-            masks[oldIdx].setAttribute('scale', '0 0 1');
-            masks[newIdx].setAttribute('scale', '1 1 1');
-          }
-        }
-        requestAnimationFrame(step);
-      }
-
-      function setupScoreDetection() {
-        const targets = document.querySelectorAll('.targetable');
-        targets.forEach(target => {
-          target.addEventListener('mouseenter', () => { currentTargetObject = target; });
-          target.addEventListener('mouseleave', () => { if (currentTargetObject === target) currentTargetObject = null; });
+            // Jiroskop Erişim Kontrolü
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(state => { if (state === 'granted') initGame(); });
+            } else { initGame(); }
         });
 
-        scoreInterval = setInterval(() => {
-          if (!currentTargetObject || timeLeft <= 0) return;
-          let currentCycleBeat = ((beatCount - 1) % 4) + 1;
+        function initGame() {
+            startScreen.style.display = 'none';
+            uiOverlay.style.display = 'block';
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-          if (currentCycleBeat === 1 || currentCycleBeat === 2) {
-            if (currentTargetObject === drums[activeIndex]) score += 10;
-          } else {
-            if (currentTargetObject === dynamicLine) score += 5;
-            if (currentTargetObject === drums[nextIndex]) score += 10;
-          }
-          uiScore.textContent = score;
-        }, 100);
-      }
+            // İlk daireyi merkeze sabitle ve parıltılı yeşile büründür
+            drums[activeIndex].setAttribute('position', {x: 0, y: 1.6, z: FIXED_Z});
+            masks[activeIndex].setAttribute('scale', '1 1 1');
+            masks[activeIndex].setAttribute('material', 'emissiveIntensity', '0.4');
 
-      function endGame() {
-        clearInterval(gameInterval);
-        clearInterval(beatInterval);
-        clearInterval(scoreInterval);
-        if (wakeLock !== null) {
-          wakeLock.release().then(() => { wakeLock = null; });
+            // Kalan 3 daireyi çakışmasız olarak dağıt
+            drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
+
+            // Döngü Tetikleyicileri
+            gameInterval = setInterval(() => { timeLeft--; uiTimer.textContent = timeLeft; if (timeLeft <= 0) endGame(); }, 1000);
+            beatInterval = setInterval(handleBeat, BEAT_DURATION);
+            setupScoreDetection();
         }
-        masks.forEach(m => m.setAttribute('scale', '0 0 1'));
-        dynamicLine.setAttribute('material', 'opacity', '0');
-        alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}`);
-      }
+
+        // MAKSİMUM KORUMALI ÇAKIŞMA ENGELLEME ALGORİTMASI
+        function randomizeDrumWithoutOverlap(targetDrum, targetIdx) {
+            let valid = false, x, y, attempts = 0;
+            while (!valid && attempts < 250) {
+                // Güvenli görüş penceresi koordinat üretimi
+                x = Math.random() * 4.2 - 2.1; 
+                y = Math.random() * 1.8 + 0.7; 
+                attempts++; 
+                valid = true;
+
+                // Diğer yerleşmiş tüm elemanlarla aradaki mesafeyi doğrula
+                for (let i = 0; i < drums.length; i++) {
+                    if (i === targetIdx) continue;
+                    let otherPos = drums[i].getAttribute('position');
+                    if (!otherPos) continue;
+
+                    let dX = x - otherPos.x;
+                    let dY = y - otherPos.y;
+                    let distance = Math.sqrt(dX*dX + dY*dY);
+
+                    if (distance < MIN_DIST) {
+                        valid = false; // İdeal mesafeden yakınsa reddet, yeniden dene
+                        break;
+                    }
+                }
+            }
+            targetDrum.setAttribute('position', {x, y, z: FIXED_Z});
+        }
+
+        function playMetronomeSound(pitch) {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(pitch, audioCtx.currentTime); 
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        }
+
+        function handleBeat() {
+            let cycle = (beatCount % 4) + 1;
+            
+            if (cycle === 1) {
+                isTransitioning = false;
+                playMetronomeSound(160);
+                masks.forEach((m, idx) => {
+                    m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 1');
+                    m.setAttribute('material', 'emissiveIntensity', idx === activeIndex ? '0.4' : '0');
+                });
+                // 1. Vuruşta aktif olmayan sarı daireleri çakışmasız zıplat
+                drums.forEach((d, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(d, idx); });
+            } 
+            
+            else if (cycle === 2) {
+                playMetronomeSound(160);
+                if (timeLeft > 30) {
+                    nextIndex = (activeIndex + 1) % 4;
+                } else {
+                    do { nextIndex = Math.floor(Math.random() * 4); } while (nextIndex === activeIndex);
+                }
+                // 2. Vuruşta çakışma ihtimaline karşı son kez doğrula
+                drums.forEach((d, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(d, idx); });
+            } 
+            
+            else if (cycle === 3) {
+                playMetronomeSound(280); // Tiz geçiş uyarısı
+                isTransitioning = true;
+                buildDynamicLine(drums[activeIndex], drums[nextIndex]);
+                animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2); // 2 vuruş süren yumuşak geçiş
+            }
+            
+            else if (cycle === 4) {
+                playMetronomeSound(280);
+            }
+
+            beatCount++;
+
+            if (cycle === 4) {
+                setTimeout(() => {
+                    dynamicLine.setAttribute('material', 'opacity', '0');
+                    dynamicLine.setAttribute('position', '0 0 -100');
+                    activeIndex = nextIndex;
+                }, BEAT_DURATION - 50);
+            }
+        }
+
+        function buildDynamicLine(drumA, drumB) {
+            let pA = drumA.getAttribute('position'), pB = drumB.getAttribute('position');
+            let dist = Math.sqrt((pB.x - pA.x)**2 + (pB.y - pA.y)**2);
+            let angle = Math.atan2(pB.y - pA.y, pB.x - pA.x) * (180 / Math.PI);
+
+            dynamicLine.setAttribute('position', {x: (pA.x+pB.x)/2, y: (pA.y+pB.y)/2, z: FIXED_Z + 0.03});
+            dynamicLine.setAttribute('height', dist);
+            dynamicLine.setAttribute('rotation', `0 0 ${angle - 90}`);
+            dynamicLine.setAttribute('material', 'opacity', '0.8');
+            
+            // Ok Dokusunun İleri Doğru Akış Animasyonu (Hareketsizliği Kırar)
+            dynamicLine.removeAttribute('animation__flow');
+            dynamicLine.setAttribute('animation__flow', `property: material.offset.y; from: 0; to: -4; dur: 2500; easing: linear; loop: true`);
+        }
+
+        function animateTransition(oldIdx, newIdx, dur) {
+            let start = performance.now();
+            function step(now) {
+                let p = (now - start) / dur; if (p > 1) p = 1;
+                
+                // Eski yeşil alan daralıyor, parıltısı sönüyor
+                masks[oldIdx].setAttribute('scale', `${1-p} ${1-p} 1`);
+                masks[oldIdx].setAttribute('material', 'emissiveIntensity', (1-p)*0.4);
+                
+                // Yeni yeşil alan genişliyor, parıltısı artıyor
+                masks[newIdx].setAttribute('scale', `${p} ${p} 1`);
+                masks[newIdx].setAttribute('material', 'emissiveIntensity', p*0.4);
+                
+                if (p < 1 && isTransitioning) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function setupScoreDetection() {
+            drums.concat(dynamicLine).forEach(t => {
+                t.addEventListener('mouseenter', () => currentTargetObject = t);
+                t.addEventListener('mouseleave', () => currentTargetObject = null);
+            });
+
+            scoreInterval = setInterval(() => {
+                if (!currentTargetObject || timeLeft <= 0) return;
+                let c = ((beatCount - 1) % 4) + 1;
+                if (c <= 2 && currentTargetObject === drums[activeIndex]) score += 10;
+                else if (c > 2) {
+                    if (currentTargetObject === dynamicLine) score += 6;
+                    if (currentTargetObject === drums[nextIndex]) score += 10;
+                }
+                uiScore.textContent = score;
+            }, 100);
+        }
+
+        function endGame() {
+            clearInterval(gameInterval); clearInterval(beatInterval); clearInterval(scoreInterval);
+            if (wakeLock) { wakeLock.release().then(() => { wakeLock = null; }); }
+            alert(`Seans Başarıyla Tamamlandı.\nToplam Skorunuz: ${score}`);
+            location.reload();
+        }
     </script>
-  </body>
+</body>
 </html>
