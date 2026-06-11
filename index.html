@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Parkinson İleri Düzey Dinamik Adaptasyon</title>
+    <title>Parkinson Klinik Rehabilitasyon Platformu</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
       #start-screen {
@@ -17,10 +17,20 @@
         z-index: 999; pointer-events: none; background: rgba(255,255,255,0.8);
         padding: 10px; border-radius: 8px;
       }
+      .menu-group {
+        margin: 15px 0; background: rgba(255,255,255,0.1); 
+        padding: 15px; border-radius: 10px; width: 320px;
+      }
+      label { font-weight: bold; display: block; margin-bottom: 8px; }
+      select {
+        width: 100%; padding: 10px; font-size: 16px; border-radius: 5px;
+        border: none; background: white; color: #1a237e; font-weight: bold;
+      }
       button {
-        padding: 15px 30px; font-size: 18px; border: none;
+        padding: 15px 40px; font-size: 18px; border: none;
         border-radius: 25px; background: #ff6f00; color: white;
         cursor: pointer; margin-top: 20px; font-weight: bold;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       }
     </style>
   </head>
@@ -33,31 +43,48 @@
     </div>
 
     <div id="start-screen">
-      <h2>Parkinson Dinamik Takip Egzersizi</h2>
-      <p style="max-width: 400px; padding: 0 20px;">
-        Hız: 40 BPM. Sarı davullar her vuruşta yer değiştirir. 3. vuruşta sabitlenirler. Beliren <b>kalın çizgiyi</b> takip edin!
-      </p>
-      <button id="start-btn">EGZERSİZİ BAŞLAT</button>
+      <h2>Parkinson Egzersiz Ayarları</h2>
+      
+      <div class="menu-group">
+        <label for="bpm-select">Egzersiz Hızı (Metronom Tempo):</label>
+        <select id="bpm-select">
+          <option value="30">30 BPM (Çok Yavaş / Ağır Rijidite)</option>
+          <option value="40" selected>40 BPM (Standart / İdeal Evre)</option>
+          <option value="50">50 BPM (Orta Hızlı)</option>
+          <option value="60">60 BPM (Hızlı / Koordinasyon Testi)</option>
+        </select>
+      </div>
+
+      <div class="menu-group">
+        <label for="size-select">Davul (Hedef) Boyutu:</label>
+        <select id="size-select">
+          <option value="0.55">Büyük (Kolay Odaklanma)</option>
+          <option value="0.40" selected>Orta (Klinik Standart)</option>
+          <option value="0.28">Küçük (Zor / İnce Tremor Kontrolü)</option>
+        </select>
+      </div>
+
+      <button id="start-btn">EKRANI KİLİTLE & BAŞLAT</button>
     </div>
 
     <a-scene vr-mode-ui="enabled: false">
       <a-sky color="#ECEFF1"></a-sky>
       <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100" color="#CFD8DC"></a-plane>
 
-      <a-cylinder id="drum-0" class="drum targetable" radius="0.4" height="0.05" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-0" radius="0.39" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
+      <a-cylinder id="drum-0" class="drum targetable" rotation="90 0 0" color="#FBC02D">
+        <a-cylinder id="mask-0" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
       </a-cylinder>
 
-      <a-cylinder id="drum-1" class="drum targetable" radius="0.4" height="0.05" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-1" radius="0.39" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
+      <a-cylinder id="drum-1" class="drum targetable" rotation="90 0 0" color="#FBC02D">
+        <a-cylinder id="mask-1" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
       </a-cylinder>
 
-      <a-cylinder id="drum-2" class="drum targetable" radius="0.4" height="0.05" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-2" radius="0.39" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
+      <a-cylinder id="drum-2" class="drum targetable" rotation="90 0 0" color="#FBC02D">
+        <a-cylinder id="mask-2" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
       </a-cylinder>
 
-      <a-cylinder id="drum-3" class="drum targetable" radius="0.4" height="0.05" rotation="90 0 0" color="#FBC02D">
-        <a-cylinder id="mask-3" radius="0.39" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
+      <a-cylinder id="drum-3" class="drum targetable" rotation="90 0 0" color="#FBC02D">
+        <a-cylinder id="mask-3" height="0.06" color="#388E3C" scale="0 1 0"></a-cylinder>
       </a-cylinder>
 
       <a-box id="dynamic-line" class="targetable" width="0.15" height="1" depth="0.01" material="color: #2196F3; opacity: 0; transparent: true" position="0 0 -100"></a-box>
@@ -79,6 +106,7 @@
       let timeLeft = 60;
       let gameInterval, beatInterval, scoreInterval;
       let audioCtx = null;
+      let wakeLock = null; // Ekranın kapanmasını engelleyecek kilit objesi
       
       const drums = [document.getElementById('drum-0'), document.getElementById('drum-1'), document.getElementById('drum-2'), document.getElementById('drum-3')];
       const masks = [document.getElementById('mask-0'), document.getElementById('mask-1'), document.getElementById('mask-2'), document.getElementById('mask-3')];
@@ -90,14 +118,40 @@
       let currentTargetObject = null;
       let isTransitioning = false;
 
-      const BEAT_DURATION = 1500; // 40 BPM (Her vuruş 1.5 saniye)
+      // Menüden Dinamik Gelecek Parametreler
+      let BEAT_DURATION = 1500; 
+      let DRUM_RADIUS = 0.40;
+      let MIN_DIST = 1.6; // Güvenli mesafe sınırı (çapın en az 4 katı yarıçap)
 
-      // Görsel Alan Kısıtlamaları (Davulların ekrandan taşmaması için güvenli sınırlar)
-      const MIN_X = -2.5, MAX_X = 2.5;
+      const MIN_X = -2.4, MAX_X = 2.4;
       const MIN_Y = 0.6, MAX_Y = 2.4;
       const FIXED_Z = -4;
 
-      startBtn.addEventListener('click', () => {
+      startBtn.addEventListener('click', async () => {
+        // Menü Değerlerini Al ve Uygula
+        let selectedBPM = parseInt(document.getElementById('bpm-select').value);
+        BEAT_DURATION = (60 / selectedBPM) * 1000;
+
+        DRUM_RADIUS = parseFloat(document.getElementById('size-select').value);
+        MIN_DIST = DRUM_RADIUS * 4; // 2 Çap mesafe kuralı ($4 \times r$)
+
+        // Davul Boyutlarını Güncelle
+        drums.forEach((drum, idx) => {
+          drum.setAttribute('radius', DRUM_RADIUS);
+          masks[idx].setAttribute('radius', DRUM_RADIUS - 0.01);
+        });
+
+        // 1. Ekran Kapanmasını Engelleme Aktivasyonu (Wake Lock)
+        try {
+          if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log("Ekran uyanık kalma kilidi aktif edildi.");
+          }
+        } catch (err) {
+          console.warn("Ekran kilidi bu tarayıcıda desteklenmiyor veya engellendi:", err);
+        }
+
+        // 2. Jiroskop İzin Süreci
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
           DeviceOrientationEvent.requestPermission().then(state => {
             if (state === 'granted') initGame();
@@ -113,19 +167,52 @@
         uiOverlay.style.display = 'block';
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Davulları ilk kez rastgele konumlara dağıt
+        // İlk davul merkezde tam yeşil başlar
+        drums[activeIndex].setAttribute('position', {x: 0, y: 1.5, z: FIXED_Z});
+        masks[activeIndex].setAttribute('scale', '1 1 1');
+
+        // Diğer davulları üst üste binmeyecek şekilde ilk kez konumlandır
         drums.forEach((drum, idx) => {
-          if (idx === activeIndex) {
-            drum.setAttribute('position', {x: 0, y: 1.5, z: FIXED_Z}); // Aktif olan merkezde başlasın
-            masks[idx].setAttribute('scale', '1 1 1'); // Tam daire yeşil
-          } else {
-            randomizeDrumPosition(drum);
-          }
+          if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx);
         });
 
         gameInterval = setInterval(updateTimer, 1000);
         beatInterval = setInterval(handleBeat, BEAT_DURATION);
         setupScoreDetection();
+      }
+
+      // ÜST ÜSTE BİNMEYİ ENGELLEYEN AKILLI KONUMLANDIRMA FONKSİYONU
+      function randomizeDrumWithoutOverlap(targetDrum, targetIdx) {
+        let attempts = 0;
+        let validPosition = false;
+        let newX, newY;
+
+        while (!validPosition && attempts < 100) {
+          attempts++;
+          newX = Math.random() * (MAX_X - MIN_X) + MIN_X;
+          newY = Math.random() * (MAX_Y - MIN_Y) + MIN_Y;
+          validPosition = true;
+
+          // Diğer yerleşmiş tüm davullarla mesafesini ölç
+          for (let i = 0; i < drums.length; i++) {
+            if (i === targetIdx) continue; // Kendini kontrol etme
+            
+            let otherPos = drums[i].getAttribute('position');
+            // Eğer o davul henüz konumlandırılmadıysa (varsayılan 0 0 0 ise ve oyun başıysa) atla
+            if (!otherPos || (otherPos.x === 0 && otherPos.y === 0)) continue;
+
+            let dx = newX - otherPos.x;
+            let dy = newY - otherPos.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+
+            // İstediğin kısıt: Mesafe en az 2 çap (MIN_DIST) kadar olmalı
+            if (dist < MIN_DIST) {
+              validPosition = false; // Çok yakın, bu koordinatı iptal et yeniden dene
+              break;
+            }
+          }
+        }
+        targetDrum.setAttribute('position', {x: newX, y: newY, z: FIXED_Z});
       }
 
       function playMetronomeSound(pitch) {
@@ -145,96 +232,77 @@
       function updateTimer() {
         timeLeft--;
         uiTimer.textContent = timeLeft;
+        if (timeLeft <= 30) uiMode.textContent = "Rastgele";
         if (timeLeft <= 0) endGame();
       }
 
-      function randomizeDrumPosition(drum) {
-        let x = Math.random() * (MAX_X - MIN_X) + MIN_X;
-        let y = Math.random() * (MAX_Y - MIN_Y) + MIN_Y;
-        drum.setAttribute('position', {x: x, y: y, z: FIXED_Z});
-      }
-
       function handleBeat() {
-        let currentCycleBeat = (beatCount % 4) + 1; // 1, 2, 3 veya 4. vuruş
+        let currentCycleBeat = (beatCount % 4) + 1;
         uiBeat.textContent = currentCycleBeat;
 
-        // 1. ve 2. Vuruşlar: Sabit Durma ve Diğer Davulların Işınlanma Fazı
         if (currentCycleBeat === 1) {
           isTransitioning = false;
           playMetronomeSound(150);
-          // Hata engelleme: Aktif olan tam yeşil, diğerleri sıfır
           masks.forEach((m, idx) => m.setAttribute('scale', idx === activeIndex ? '1 1 1' : '0 0 0'));
           
-          // Diğer 3 davulu ışınla
-          drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumPosition(drum); });
+          // Sarı davulları üst üste binmeyecek şekilde ışınla
+          drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
         } 
         
         else if (currentCycleBeat === 2) {
           playMetronomeSound(150);
           
-          // Bir sonraki hedefi seç ve diğer davulları son kez ışınla
           if (timeLeft > 30) {
             nextIndex = (activeIndex + 1) % drums.length;
           } else {
             do { nextIndex = Math.floor(Math.random() * drums.length); } while (nextIndex === activeIndex);
           }
 
-          drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumPosition(drum); });
+          // Son kez çakışmasız ışınlama yap
+          drums.forEach((drum, idx) => { if (idx !== activeIndex) randomizeDrumWithoutOverlap(drum, idx); });
         } 
         
-        // 3. Vuruş: GEÇİŞ FAZI BAŞLADI (Işınlanma durur, çizgiler çizilir, animasyon başlar)
         else if (currentCycleBeat === 3) {
-          playMetronomeSound(300); // Uyarıcı tiz ses
+          playMetronomeSound(300);
           isTransitioning = true;
 
-          // Dinamik Çizgiyi İki Davul Arasına Hesapla ve Yerleştir
           buildDynamicLine(drums[activeIndex], drums[nextIndex]);
-
-          // Animasyonu başlat (Bu kez 2 vuruş sürecek = 2 * BEAT_DURATION = 3000ms)
-          animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2);
+          animateTransition(activeIndex, nextIndex, BEAT_DURATION * 2); // 2 vuruş süren süzülme
         }
         
         else if (currentCycleBeat === 4) {
-          playMetronomeSound(300); // Geçiş fazı devam ediyor sesi
+          playMetronomeSound(300);
         }
 
         beatCount++;
 
-        // 4. vuruş bittiğinde (Yeni döngüye girerken) çizgiyi gizle ve indeksleri güncelle
         if (currentCycleBeat === 4) {
           setTimeout(() => {
             dynamicLine.setAttribute('material', 'opacity', '0');
-            dynamicLine.setAttribute('position', '0 0 -100'); // Ekrandan uzaklaştır
+            dynamicLine.setAttribute('position', '0 0 -100');
             activeIndex = nextIndex;
           }, BEAT_DURATION - 30);
         }
       }
 
-      // İki dinamik koordinat arasında kalın box şeridi oluşturan vektör matematiği
       function buildDynamicLine(drumA, drumB) {
         let posA = drumA.getAttribute('position');
         let posB = drumB.getAttribute('position');
 
-        // Orta Nokta Hesaplama
         let midX = (posA.x + posB.x) / 2;
         let midY = (posA.y + posB.y) / 2;
         
-        // İki nokta arasındaki mesafe (Çizginin boyu)
         let dx = posB.x - posA.x;
         let dy = posB.y - posA.y;
         let distance = Math.sqrt(dx*dx + dy*dy);
-
-        // Açı Hesaplama (Z ekseni etrafında döndürme)
         let angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
-        // Çizgiyi konumlandır ve kalınlaştır
         dynamicLine.setAttribute('position', {x: midX, y: midY, z: FIXED_Z + 0.02});
-        dynamicLine.setAttribute('height', distance); // Boyu iki davul arası kadar açılır
-        dynamicLine.setAttribute('rotation', `0 0 ${angle - 90}`); // Yönü hedefe çevrilir
-        dynamicLine.setAttribute('material', 'opacity', '0.9'); // Görünür kıl
+        dynamicLine.setAttribute('height', distance);
+        dynamicLine.setAttribute('rotation', `0 0 ${angle - 90}`);
+        dynamicLine.setAttribute('material', 'opacity', '0.9');
       }
 
-      // Tam Daire Koruma Garantili Geçiş Animasyonu (Yatay/Dikey scale eş zamanlı değişir)
       function animateTransition(oldIdx, newIdx, duration) {
         let startTime = performance.now();
 
@@ -242,11 +310,9 @@
           let progress = (now - startTime) / duration;
           if (progress > 1) progress = 1;
 
-          // Eski daire küçülüyor (X ve Z koordinatlarında tam daire kalacak şekilde)
           let oldScale = 1 - progress;
           masks[oldIdx].setAttribute('scale', `${oldScale} 1 ${oldScale}`);
 
-          // Yeni daire büyüyor (X ve Z koordinatlarında tam daire büyüme)
           let newScale = progress;
           masks[newIdx].setAttribute('scale', `${newScale} 1 ${newScale}`);
 
@@ -269,15 +335,11 @@
 
         scoreInterval = setInterval(() => {
           if (!currentTargetObject || timeLeft <= 0) return;
-          
-          // Şu an hangi vuruşta olduğumuzu bul
           let currentCycleBeat = ((beatCount - 1) % 4) + 1;
 
           if (currentCycleBeat === 1 || currentCycleBeat === 2) {
-            // 1 ve 2. vuruşta puan sadece tam aktif davuldan gelir
             if (currentTargetObject === drums[activeIndex]) score += 10;
           } else {
-            // 3 ve 4. vuruşta (GEÇİŞ ANINDA) puan çizgiden ve yeni hedeften gelir
             if (currentTargetObject === dynamicLine) score += 5;
             if (currentTargetObject === drums[nextIndex]) score += 10;
           }
@@ -289,6 +351,12 @@
         clearInterval(gameInterval);
         clearInterval(beatInterval);
         clearInterval(scoreInterval);
+        
+        // Ekran kilidini güvenle serbest bırak
+        if (wakeLock !== null) {
+          wakeLock.release().then(() => { wakeLock = null; });
+        }
+
         masks.forEach(m => m.setAttribute('scale', '0 0 0'));
         dynamicLine.setAttribute('material', 'opacity', '0');
         alert(`Egzersiz Tamamlandı!\nToplam Skorunuz: ${score}`);
